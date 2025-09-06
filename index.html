@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    a {
+      text-decoration-line: none;
+    }
+  </style>
+</head>
+<body style="margin: 0">
+  <div style="width: 100%; height: 80px; background-color: black; display: flex;">
+    <a style="color: white; margin: auto; margin-left: 10px;" href="index.html">CCK online battle</a>
+    <button style="color: white; background-color: black; margin: auto; margin-right: 10px; width: 70px; height: 30px;" id="lgbt">LOGIN</button>
+  </div>
+</body>
+</html>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-analytics.js";
+  import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCZcFXVQ-Mm4SO5bVOcIGdf6RAKjF6vy6w",
+    authDomain: "cubing-online-battle.firebaseapp.com",
+    projectId: "cubing-online-battle",
+    storageBucket: "cubing-online-battle.appspot.com",   // ← 여기 오타 있었음!
+    messagingSenderId: "468219493734",
+    appId: "1:468219493734:web:accb95d9d40da7eda01ca7",
+    measurementId: "G-6P2FWZ8CYM"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  // Firestore 읽기 예시
+  async function loadRooms() {
+    const querySnapshot = await getDocs(collection(db, "rooms"));
+    querySnapshot.forEach((doc) => {
+      console.log(doc.id, " => ", doc.data());
+    });
+  }
+  async function createRoom(n) {
+  const docRef = await addDoc(collection(db, "rooms"), {
+      name: n
+    });
+    console.log("New room ID:", docRef.id);
+  }
+
+  async function login() {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log("로그인 성공:", user.displayName, user.email);
+    } catch (error) {
+      console.error("로그인 실패:", error);
+    }
+  }
+  async function logout() {
+    await signOut(auth);
+    console.log("로그아웃 완료");
+  }
+
+  var lgbt = document.getElementById("lgbt");
+
+  loadRooms();
+  lgbt.addEventListener('click', ()=>{
+    login();
+  });
+</script>
