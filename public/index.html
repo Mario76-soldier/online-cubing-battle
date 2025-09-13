@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>test</title>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/12.2.1/firebase-app-compat.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/12.2.1/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-database-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-messaging-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-storage-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-analytics-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-remote-config-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-performance-compat.js"></script>
+    <!-- 
+      initialize the SDK after all desired features are loaded, set useEmulator to false
+      to avoid connecting the SDK to running emulators.
+    -->
+    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    <style>
+    a {
+      text-decoration-line: none;
+    }
+    .v-center{
+      margin: auto 0;
+    }
+  </style>
+  <style>
+    .modal {
+      display: none; /* 기본은 숨김 */
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      min-width: 250px;
+    }
+    .buttons {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+  </style>
+  </head>
+
+
+  <body style="margin: 0">
+  <div style="width: 100%; height: 80px; background-color: black; display: flex;">
+    <a style="color: white; margin: auto; margin-left: 10px;" href="index.html">CCK online battle</a>
+    <button style="color: white; border: none; background-color: black; margin: auto; margin-right: 10px; width: 70px; height: 30px;" id="libt">LOGIN</button>
+  </div>
+  
+  <div style="margin: 50px 20px 0px 20px; border: 2px solid black; width: auto;">
+    <div style="margin: 0px; border-bottom: 2px solid black; width: auto; text-align: center;" id="pb-div"> 
+      <strong style="font-size: 30px;">Public Rooms</strong>
+    </div>
+  </div>
+
+  <div style="margin: 0px 20px 0px 20px; border: 2px solid black; width: auto;">
+    <div style="margin: 0px; border-bottom: 2px solid black; width: auto; text-align: center;" id="pv-div"> 
+      <strong style="font-size: 30px;">Private Rooms</strong>
+    </div>
+  </div>
+
+  <div id="passwordModal" class="modal">
+    <div class="modal-content">
+      <h2>entering</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px; width: 200px; margin: auto;">
+        <input type="text" id="nameRoom" placeholder="submit your nickname">
+        <input type="password" id="roomPassword" placeholder="submit the password">
+      </div>
+      <div class="buttons">
+        <button id="mdys">submit</button>
+        <button id="mdcc">cancel</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-analytics.js";
+  import { getFirestore, collection, getDocs, getDoc, addDoc, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCZcFXVQ-Mm4SO5bVOcIGdf6RAKjF6vy6w",
+    authDomain: "cubing-online-battle.firebaseapp.com",
+    projectId: "cubing-online-battle",
+    storageBucket: "cubing-online-battle.appspot.com",
+    messagingSenderId: "468219493734",
+    appId: "1:468219493734:web:accb95d9d40da7eda01ca7",
+    measurementId: "G-6P2FWZ8CYM"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  var loged = false;
+  var libt = document.getElementById("libt");
+  var pbdiv = document.getElementById("pb-div");
+  var pvdiv = document.getElementById("pv-div");
+  var pbrms = [];
+  var pvrms = [];
+  var mdys = document.getElementById("mdys");
+  var mdcc = document.getElementById("mdcc");
+  var nr = document.getElementById("nameRoom");
+
+  // Firestore 읽기 예시
+  async function loadRooms() {
+    const querySnapshot = await getDocs(collection(db, "rooms"));
+    // querySnapshot.forEach((doc) => {
+    //   console.log(doc.id, " => ", doc.data());
+    // });
+    return querySnapshot;
+  }
+  async function createRoom(n) {
+  const docRef = await addDoc(collection(db, "rooms"), {
+      name: n
+    });
+    // console.log("New room ID:", docRef.id);
+  }
+
+  async function populationRoom(id, delta) {
+    try {
+      await updateDoc(doc(db, "rooms", id), {
+        population: increment(delta)  // delta 만큼 증가(+)/감소(-)
+      });
+    } catch (e) {
+      console.error("인원 수정 실패:", e);
+    }
+  }
+
+  async function login() {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log("로그인 성공:", user.displayName, user.email);
+      loged = true;
+      libt.innerHTML = "LOGOUT";
+
+    } catch (error) {
+      console.error("로그인 실패:", error);
+    }
+  }
+  async function logout() {
+    await signOut(auth);
+    loged = false;
+    libt.innerHTML = "LOGIN";
+  }
+
+  let currentRoomId = null;
+
+  function openPasswordModal(roomId) {
+    currentRoomId = roomId;
+    document.getElementById("passwordModal").style.display = "flex";
+  }
+
+  function closeModal() {
+    document.getElementById("passwordModal").style.display = "none";
+  }
+
+  async function checkPassword() {
+    const input = document.getElementById("roomPassword").value;
+
+    // 🔹 Firestore에서 비밀번호 확인
+    const roomDoc = await getDoc(doc(db, "rooms", currentRoomId));
+    if (!roomDoc.exists()) {
+      alert("that room does not exist");
+      return;
+    }
+
+    const roomData = roomDoc.data();
+    if (roomData.password == input) {
+      if (nr.value != "") {
+        alert("enter successfully");
+        closeModal();
+        const playersCol = await collection(db, "rooms", currentRoomId, "people");
+        const newPersonRef = await addDoc(collection(db, "rooms", roomDoc.id, "people"), {
+          name: nr.value,
+          mean: -1,
+          time: [],
+          wins: 0,
+          lastActive: Date.now()
+        });
+        await sessionStorage.setItem("myPersonId", newPersonRef.id);
+        window.location.href = "battle.html?id=" + currentRoomId;
+      } else {
+        alert("please submit your nickname");
+      }
+    } else {
+      alert("wrong password");
+    }
+  }
+
+  mdys.addEventListener('click', () => {
+    checkPassword();
+  });
+  mdcc.addEventListener('click', () => {
+    closeModal();
+  });
+  var rms = await loadRooms();
+
+  //div style="margin: 0px; border-bottom: 2px solid black; width: auto; height: 50px; text-align: center;" id="pb-div"
+  rms.forEach((rm) => {
+    const newDiv = document.createElement("div");
+    newDiv.style.borderTop = "2px solid black";
+    newDiv.style.margin = "0px";
+    newDiv.style.backgroundColor = "#f9f9f9";
+
+    // 2. 여러 텍스트 추가 (p 태그로)
+    const title = document.createElement("p");
+    title.textContent = rm.data().name;
+    title.style.fontWeight = "bold";
+    title.style.fontSize = "30px";
+    title.style.margin = "0"
+
+    const content = document.createElement("p");
+    content.textContent = "population: " + rm.data().population;
+
+    newDiv.appendChild(title);
+    newDiv.appendChild(content);
+
+    pbdiv.appendChild(newDiv);
+    pbrms.push(newDiv);
+    newDiv.onclick = () => {
+      openPasswordModal(rm.id);
+      // window.location.href = "battle.html?id=" + rm.id; 
+    };
+
+    // console.log(rm.id, " => ", rm.data());
+  });
+
+  libt.addEventListener('click', ()=>{
+    if (!loged) {
+      login();
+    }
+    else {
+      logout();
+    }
+  });
+</script>
+</html>

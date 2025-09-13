@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>test</title>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/12.2.1/firebase-app-compat.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/12.2.1/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-database-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-messaging-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-storage-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-analytics-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-remote-config-compat.js"></script>
+    <script defer src="/__/firebase/12.2.1/firebase-performance-compat.js"></script>
+    <!-- 
+      initialize the SDK after all desired features are loaded, set useEmulator to false
+      to avoid connecting the SDK to running emulators.
+    -->
+    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    <style>
+    a {
+      text-decoration-line: none;
+    }
+    .v-center{
+      margin: auto 0;
+    }
+  </style>
+  </head>
+
+
+  <body style="margin: 0">
+  <div style="width: 100%; height: 80px; background-color: black; display: flex;">
+    <a style="color: white; margin: auto; margin-left: 10px;" href="index.html">CCK online battle</a>
+    <button style="color: white; border: none; background-color: black; margin: auto; margin-right: 10px; width: 70px; height: 30px;" id="obt">GET OUT</button>
+  </div>
+
+  <div style="margin: 50px 20px 0px 20px; border: 2px solid black; width: auto; height: 500px; text-align: center;">
+    <div style="margin: 0px; border: 2px solid black; width: auto; height: 60px; text-align: center; font-size: 20px;" id="pb-div"> 
+      scramble
+    </div>
+    <input type="text" id="time_input" style="width: 400px; height: 100px; font-size: 50px; text-align: center;">
+    <strong id="time_lable" style="font-size: 70px; margin: 20px; display: none;">0.00</strong>
+    <div style="margin: 0px; border: 2px solid black; width: auto; height: 329px; text-align: center;" id="pb-div"> 
+        <table border="2px solid black" style="border-collapse: collapse; width: 100%;" id="rt">
+            <colgroup>
+                <col style="width: 60px; background-color: aqua;"/>
+            </colgroup>
+            <tr>
+                <th><br>names<br><br></th>
+            </tr>
+            <tr>
+                <th>mean</th>
+            </tr>
+            <tr>
+                <th>wins</th>
+            </tr>
+        </table>
+    </div>
+  </div>
+</body>
+</html>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-analytics.js";
+  import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCZcFXVQ-Mm4SO5bVOcIGdf6RAKjF6vy6w",
+    authDomain: "cubing-online-battle.firebaseapp.com",
+    projectId: "cubing-online-battle",
+    storageBucket: "cubing-online-battle.appspot.com",   // ← 여기 오타 있었음!
+    messagingSenderId: "468219493734",
+    appId: "1:468219493734:web:accb95d9d40da7eda01ca7",
+    measurementId: "G-6P2FWZ8CYM"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  const params = new URLSearchParams(window.location.search);
+  const roomId = params.get("id");
+  // console.log("방 ID:", roomId);
+
+  var obt = document.getElementById("obt");
+  var rt = document.getElementById("rt");
+  var ort = rt.innerHTML;
+  var op = 0;
+
+  const myPersonId = sessionStorage.getItem("myPersonId");
+  //console.log("나는 이 문서:", myPersonId);
+
+  var rms = await loadRooms();
+  var pp = await loadPeople();
+  var myPersonDoc;
+  pp.forEach(p => {
+    if (p.id == myPersonId) {
+      myPersonDoc = p.ref;
+    }
+  });
+  var now = Date.now();
+
+  // Firestore 읽기 예시
+  async function loadRooms() {
+    const querySnapshot = await getDocs(collection(db, "rooms"));
+    // querySnapshot.forEach((doc) => {
+    //   console.log(doc.id, " => ", doc.data());
+    // });
+    return querySnapshot;
+  }
+
+  async function loadPeople() {
+    const querySnapshot = await getDocs(collection(db, "rooms", roomId, "people"));
+    // querySnapshot.forEach((doc) => {
+    //   console.log(doc.id, " => ", doc.data());
+    // });
+    return querySnapshot;
+  }
+
+  async function createRoom(n) {
+  const docRef = await addDoc(collection(db, "rooms"), {
+      name: n
+    });
+    console.log("New room ID:", docRef.id);
+  }
+
+  async function tableRefresh() {
+    rt.innerHTML = ort;
+    op = 0;
+    pp.forEach(p => {
+      // console.log(p.data().lastActive, now);
+      if (p.data().lastActive > now - 10000){
+        op++;
+        var temptd = document.createElement("td");
+        temptd.innerHTML = p.data().name;
+        if (p.id == myPersonId) {
+          temptd.style.color = "blue";
+          temptd.style.fontWeight = "bold";
+          myPersonDoc = p.ref;
+        }
+        rt.children[1].children[0].appendChild(temptd);
+
+        temptd = document.createElement("td");
+        temptd.innerHTML = p.data().mean == -1 ? "DNF" : p.data().mean;
+        rt.children[1].children[1].appendChild(temptd);
+
+        temptd = document.createElement("td");
+        temptd.innerHTML = p.data().wins;
+        rt.children[1].children[2].appendChild(temptd);
+        // console.log(rt.children[1]);
+      }
+    });
+  }
+
+  await updateDoc(myPersonDoc, { lastActive: now });
+  await tableRefresh();
+
+  async function updateLoop() {
+    now = Date.now();
+    pp = await loadPeople();
+    await updateDoc(myPersonDoc, { lastActive: now });
+    await tableRefresh();
+    setTimeout(updateLoop, 5000);
+  }
+  updateLoop();
+
+  // onSnapshot(collection(db, "rooms", roomId, "people"), async (snapshot) =>{
+  //   now = Date.now();
+  //   pp = await loadPeople();
+  //   await updateDoc(myPersonDoc, { lastActive: now });
+  //   await tableRefresh();
+  // }); 
+</script>
+</html>
